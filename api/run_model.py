@@ -4,23 +4,19 @@ import shutil
 import os
 from USAB_serverless import run_model
 
-app = FastAPI()
+app = FastAPI()  # <-- Vercel looks for this
 
 @app.post("/run-model/")
 async def run_model_api(file: UploadFile = File(...)):
-    # Save uploaded input sheet temporarily
     input_path = f"/tmp/{file.filename}"
     with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Model template path
     model_path = os.path.join(os.getcwd(), "Bespoke Model - US - v2.xlsm")
     output_path = "/tmp/output_model.xlsm"
 
-    # Process the model
     run_model(input_path, model_path, output_path)
 
-    # Return processed file
     return FileResponse(
         path=output_path,
         filename="Processed_Model.xlsm",
