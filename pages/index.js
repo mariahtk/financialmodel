@@ -8,7 +8,7 @@ export default function Home() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/run-model/", {
+    const res = await fetch("/api/run_model", {  // matches API file name
       method: "POST",
       body: formData,
     });
