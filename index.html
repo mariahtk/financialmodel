@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Model Processor</title>
+</head>
+<body>
+    <h1>Upload Your Input Sheet</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" name="file" accept=".xlsm" required />
+        <button type="submit">Process Model</button>
+    </form>
+    <div id="downloadLink" style="margin-top:20px;"></div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/process_excel/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const downloadURL = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadURL;
+
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = "Processed_Model.xlsm";
+                if (contentDisposition && contentDisposition.includes('filename=')) {
+                    filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+                }
+
+                link.download = filename;
+                link.textContent = `Download ${filename}`;
+                const container = document.getElementById('downloadLink');
+                container.innerHTML = '';
+                container.appendChild(link);
+            } else {
+                const error = await response.json();
+                alert("Error: " + (error.error || "Unknown error"));
+            }
+        });
+    </script>
+</body>
+</html>
