@@ -1,55 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Financial Model Processor</title>
-</head>
-<body>
-    <h1>Upload Your Input Sheet</h1>
-    <form id="uploadForm">
-        <input type="file" id="fileInput" name="file" accept=".xlsm" required />
-        <button type="submit">Process Model</button>
-    </form>
-    <div id="downloadLink" style="margin-top:20px;"></div>
+<h1>Upload Your Input Sheet</h1>
 
-    <script>
-        const form = document.getElementById('uploadForm');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (!file) return;
+<form id="uploadForm">
+    <input type="file" id="fileInput" name="file" accept=".xlsm" required />
+    <button type="submit">Process Model</button>
+</form>
 
-            const formData = new FormData();
-            formData.append('file', file);
+<!-- New button to download base model -->
+<button id="downloadBase">Download Base Model</button>
 
-            const response = await fetch('/api/process_excel/', {
-                method: 'POST',
-                body: formData
-            });
+<div id="downloadLink" style="margin-top:20px;"></div>
 
-            if (response.ok) {
-                const blob = await response.blob();
-                const downloadURL = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = downloadURL;
+<script>
+const form = document.getElementById('uploadForm');
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return;
 
-                const contentDisposition = response.headers.get('Content-Disposition');
-                let filename = "Processed_Model.xlsm";
-                if (contentDisposition && contentDisposition.includes('filename=')) {
-                    filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
-                }
+    const formData = new FormData();
+    formData.append('file', file);
 
-                link.download = filename;
-                link.textContent = `Download ${filename}`;
-                const container = document.getElementById('downloadLink');
-                container.innerHTML = '';
-                container.appendChild(link);
-            } else {
-                const error = await response.json();
-                alert("Error: " + (error.error || "Unknown error"));
-            }
-        });
-    </script>
-</body>
-</html>
+    const response = await fetch('/api/process_excel/', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (response.ok) {
+        const blob = await response.blob();
+        const downloadURL = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadURL;
+
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = "Processed_Model.xlsm";
+        if (contentDisposition && contentDisposition.includes('filename=')) {
+            filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+        }
+
+        link.download = filename;
+        link.textContent = `Download ${filename}`;
+        const container = document.getElementById('downloadLink');
+        container.innerHTML = '';
+        container.appendChild(link);
+    } else {
+        const error = await response.json();
+        alert("Error: " + (error.error || "Unknown error"));
+    }
+});
+
+// New button functionality
+document.getElementById('downloadBase').addEventListener('click', async () => {
+    const response = await fetch('/api/download_base_model/');
+    if (response.ok) {
+        const blob = await response.blob();
+        const downloadURL = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadURL;
+        link.download = "Bespoke Model - US - v2.xlsm";
+        link.textContent = "Download Base Model";
+        const container = document.getElementById('downloadLink');
+        container.innerHTML = '';
+        container.appendChild(link);
+    } else {
+        alert("Error: Cannot download base model");
+    }
+});
+</script>
