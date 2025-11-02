@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 
 app = FastAPI()
 
-# Base model path (already in your Vercel project)
+# Base model path (make sure this exists in your project)
 BASE_MODEL = "Bespoke Model - US - v2.xlsm"
 
 # Map of input cells → model cells
@@ -24,30 +24,43 @@ CELL_MAP = {
 @app.post("/process_excel/")
 async def process_excel(file: UploadFile = File(...)):
     try:
-        # Save uploaded input sheet temporarily
+        # 1. Save uploaded file
         input_path = f"/tmp/{file.filename}"
         with open(input_path, "wb") as f:
             f.write(await file.read())
 
-        # Load input workbook
-        wb_input = load_workbook(input_path, keep_vba=True)
-        ws_input = wb_input.active  # or ws_input = wb_input["Sales Team Input Sheet"]
+        # 2. Load workbooks
+        try:
+            wb_input = load_workbook(input_path, keep_vba=True)
+        except Exception as e:
+            return {"error": f"Failed to open uploaded input file: {e}"}
 
-        # Copy base model to temp output path
-        output_path = f"/tmp/Processed_Model.xlsm"
-        shutil.copy2(BASE_MODEL, output_path)
+        try:
+            wb_model = load_workbook(BASE_MODEL, keep_vba=True)
+        except Exception as e:
+            return {"error": f"Failed to open base model file: {e}"}
 
-        # Load the model workbook
-        wb_model = load_workbook(output_path, keep_vba=True)
-        ws_model = wb_model.active  # or ws_model = wb_model["Sales Team Input Sheet"]
+        # 3. Access sheets
+        try:
+            ws_input = wb_input["Sales Team Input Sheet"]
+        except KeyError:
+            return {"error": "Input sheet 'Sales Team Input Sheet' not found in uploaded file."}
 
-        # Copy values from input sheet to model sheet
+        try:
+            ws_model = wb_model["Sales Team Input Sheet"]
+        except KeyError:
+            return {"error": "Sheet 'Sales Team Input Sheet' not found in base model."}
+
+        # 4. Copy mapped cell values
         for input_cell, model_cell in CELL_MAP.items():
-            value = ws_input[input_cell].value
-            if value is not None:
-                ws_model[model_cell].value = value
+            try:
+                value = ws_input[input_cell].value
+                if value is not None:
+                    ws_model[model_cell].value = value
+            except Exception as e:
+                return {"error": f"Failed to copy {input_cell} to {model_cell}: {e}"}
 
-        # Optional: process market rent dropdown logic
+        # 5. Handle market rent dropdown logic (optional)
         try:
             market_rent = ws_input["F37"].value
             if market_rent is not None:
@@ -58,9 +71,14 @@ async def process_excel(file: UploadFile = File(...)):
         except Exception:
             pass
 
-        # Save the modified model
-        wb_model.save(output_path)
+        # 6. Save output
+        output_path = f"/tmp/Processed_Model.xlsm"
+        try:
+            wb_model.save(output_path)
+        except Exception as e:
+            return {"error": f"Failed to save processed model: {e}"}
 
+        # 7. Return as downloadable file
         return FileResponse(
             path=output_path,
             filename="Processed_Model.xlsm",
@@ -68,4 +86,4 @@ async def process_excel(file: UploadFile = File(...)):
         )
 
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Unexpected error: {e}"}
